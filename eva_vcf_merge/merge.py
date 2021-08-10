@@ -67,7 +67,7 @@ class VCFMerger:
             nextflow_config_path=self.nextflow_config,
             resume=resume
         )
-        # move merged files to output directory and rename
+        # move merged files to output directory and rename with alias
         for alias in merged_filenames:
             target_filename = os.path.join(self.output_dir, f'{alias}_merged.vcf.gz')
             shutil.move(merged_filenames[alias], target_filename)
@@ -113,7 +113,6 @@ class VCFMerger:
         for i, (alias, vcfs) in enumerate(vcf_groups.items()):
             deps, index_processes, compressed_vcfs = self.compress_and_index(i, vcfs)
             compress_pipeline = NextFlowPipeline(deps)
-            # TODO use alias in the merged filename somehow?
             concat_pipeline, merged_filename = get_multistage_vertical_concat_pipeline(
                 vcf_files=compressed_vcfs,
                 concat_chunk_size=chunk_size,
