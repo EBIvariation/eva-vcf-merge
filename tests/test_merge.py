@@ -32,7 +32,6 @@ def test_vertical_merge(vcf_merger, same_samples_vcfs):
     assert_all_files_present(filenames.values())
 
 
-# TODO fails when run as suite but not alone... two of 0/0 concat + index but nothing else....
 def test_concat_uninterrupted(vcf_merger, many_vcfs_to_concat):
     #   s0.vcf.gz   s1.vcf.gz   s2.vcf.gz   s3.vcf.gz   s4.vcf.gz
     #       \           /           \           /

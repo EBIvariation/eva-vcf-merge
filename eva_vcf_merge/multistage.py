@@ -26,8 +26,8 @@ def get_multistage_vertical_concat_pipeline(
         concat_chunk_size,
         bcftools_binary,
         stage=0,
-        prev_stage_processes=[],
-        pipeline=NextFlowPipeline()
+        prev_stage_processes=None,
+        pipeline=None
 ):
     """
     # Generate Nextflow pipeline for multi-stage VCF concatenation of 5 VCF files with 2-VCFs concatenated at a time (CONCAT_CHUNK_SIZE=2)
@@ -47,6 +47,9 @@ def get_multistage_vertical_concat_pipeline(
     # -------	   		  			\	                            /
     #						      vcf1_2_3_4_5=concat(vcf1_2_3_4,vcf5)          <----- Final result
     """
+    if not pipeline:
+        pipeline = NextFlowPipeline()
+        prev_stage_processes = []
     # If we are left with only one file, this means we have reached the last concat stage
     if len(vcf_files) == 1:
         return pipeline, vcf_files[0]
