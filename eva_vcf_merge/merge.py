@@ -28,6 +28,7 @@ class VCFMerger:
         self.nextflow_binary = nextflow_binary
         self.nextflow_config = nextflow_config
         self.output_dir = output_dir
+        self.working_dir = os.path.join(output_dir, 'nextflow')
 
     def horizontal_merge(self, vcf_groups, resume=True):
         """
@@ -38,10 +39,10 @@ class VCFMerger:
         :returns: dict of merged filenames
         """
         pipeline, merged_filenames = self.generate_horizontal_merge_pipeline(vcf_groups)
-        workflow_file = os.path.join(self.output_dir, 'merge_workflow.nf')
+        workflow_file = os.path.join(self.working_dir, 'horizontal_merge.nf')
         pipeline.run_pipeline(
             workflow_file_path=workflow_file,
-            working_dir=self.output_dir,
+            working_dir=self.working_dir,
             nextflow_binary_path=self.nextflow_binary,
             nextflow_config_path=self.nextflow_config,
             resume=resume
@@ -58,11 +59,10 @@ class VCFMerger:
         :returns: dict of merged filenames
         """
         pipeline, merged_filenames = self.generate_vertical_merge_pipeline(vcf_groups, chunk_size)
-        workflow_file = os.path.join(self.output_dir, "vertical_concat.nf")
-        # TODO logging?
+        workflow_file = os.path.join(self.working_dir, "vertical_concat.nf")
         pipeline.run_pipeline(
             workflow_file_path=workflow_file,
-            working_dir=self.output_dir,
+            working_dir=self.working_dir,
             nextflow_binary_path=self.nextflow_binary,
             nextflow_config_path=self.nextflow_config,
             resume=resume
@@ -89,7 +89,7 @@ class VCFMerger:
             dependencies.update(deps)
 
             safe_alias = get_safe_str(alias)
-            list_filename = write_files_to_list(compressed_vcfs, safe_alias, self.output_dir)
+            list_filename = write_files_to_list(compressed_vcfs, safe_alias, self.working_dir)
             merged_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             merge_process = NextFlowProcess(
                 process_name=f'merge_{i}',
@@ -118,7 +118,7 @@ class VCFMerger:
             concat_pipeline, merged_filename = get_multistage_vertical_concat_pipeline(
                 vcf_files=compressed_vcfs,
                 concat_chunk_size=chunk_size,
-                concat_processing_dir=self.output_dir,
+                concat_processing_dir=self.working_dir,
                 bcftools_binary=self.bcftools_binary
             )
             pipeline = NextFlowPipeline.join_pipelines(compress_pipeline, concat_pipeline)
