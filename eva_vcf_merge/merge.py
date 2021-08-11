@@ -18,7 +18,7 @@ import shutil
 from ebi_eva_common_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
 
 from eva_vcf_merge.multistage import get_multistage_vertical_concat_pipeline
-from eva_vcf_merge.utils import write_files_to_list
+from eva_vcf_merge.utils import write_files_to_list, get_safe_str
 
 
 class VCFMerger:
@@ -69,7 +69,8 @@ class VCFMerger:
         )
         # move merged files to output directory and rename with alias
         for alias in merged_filenames:
-            target_filename = os.path.join(self.output_dir, f'{alias}_merged.vcf.gz')
+            safe_alias = get_safe_str(alias)
+            target_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             shutil.move(merged_filenames[alias], target_filename)
             merged_filenames[alias] = target_filename
         return merged_filenames
@@ -87,8 +88,9 @@ class VCFMerger:
             deps, index_processes, compressed_vcfs = self.compress_and_index(i, vcfs)
             dependencies.update(deps)
 
-            list_filename = write_files_to_list(compressed_vcfs, alias, self.output_dir)
-            merged_filename = os.path.join(self.output_dir, f'{alias}_merged.vcf.gz')
+            safe_alias = get_safe_str(alias)
+            list_filename = write_files_to_list(compressed_vcfs, safe_alias, self.output_dir)
+            merged_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             merge_process = NextFlowProcess(
                 process_name=f'merge_{i}',
                 command_to_run=f'{self.bcftools_binary} merge --merge all --file-list {list_filename} '

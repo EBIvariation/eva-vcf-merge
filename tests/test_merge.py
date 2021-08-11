@@ -9,9 +9,9 @@ def assert_all_files_present(filenames):
 
 
 def test_horizontal_merge(vcf_merger, unique_samples_vcfs):
-    vcfs = {'alias': unique_samples_vcfs}
+    vcfs = {'we!rd alias': unique_samples_vcfs}
     filenames = vcf_merger.horizontal_merge(vcfs, resume=False)
-    assert filenames == {'alias': os.path.join(vcf_merger.output_dir, 'alias_merged.vcf.gz')}
+    assert filenames == {'we!rd alias': os.path.join(vcf_merger.output_dir, 'we_rd_alias_merged.vcf.gz')}
     assert_all_files_present(filenames.values())
 
 

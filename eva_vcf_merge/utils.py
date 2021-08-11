@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 
 
 def are_all_elements_unique(elements):
@@ -33,3 +34,8 @@ def write_files_to_list(files, alias, output_dir):
         for filename in files:
             handle.write(filename + "\n")
     return list_filename
+
+
+def get_safe_str(s):
+    """Return string with non-digits/letters replaced by underscore."""
+    return re.sub('[^0-9a-zA-Z]+', '_', s)
