@@ -86,15 +86,15 @@ class VCFMerger:
         """
         dependencies = {}
         merged_filenames = {}
-        for i, (alias, vcfs) in enumerate(vcf_groups.items()):
-            deps, index_processes, compressed_vcfs = self.compress_and_index(i, vcfs)
+        for alias, vcfs in vcf_groups.items():
+            safe_alias = get_safe_str(alias)
+            deps, index_processes, compressed_vcfs = self.compress_and_index(safe_alias, vcfs)
             dependencies.update(deps)
 
-            safe_alias = get_safe_str(alias)
             list_filename = write_files_to_list(compressed_vcfs, safe_alias, self.working_dir)
             merged_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             merge_process = NextFlowProcess(
-                process_name=f'merge_{i}',
+                process_name=f'merge_{safe_alias}',
                 command_to_run=f'{self.bcftools_binary} merge --merge all --file-list {list_filename} '
                                f'--threads 3 -O z -o {merged_filename}'
             )
@@ -114,8 +114,9 @@ class VCFMerger:
         """
         full_pipeline = NextFlowPipeline()
         merged_filenames = {}
-        for i, (alias, vcfs) in enumerate(vcf_groups.items()):
-            deps, index_processes, compressed_vcfs = self.compress_and_index(i, vcfs)
+        for alias, vcfs in vcf_groups.items():
+            safe_alias = get_safe_str(alias)
+            deps, index_processes, compressed_vcfs = self.compress_and_index(safe_alias, vcfs)
             compress_pipeline = NextFlowPipeline(deps)
             concat_pipeline, merged_filename = get_multistage_vertical_concat_pipeline(
                 vcf_files=compressed_vcfs,
@@ -128,12 +129,13 @@ class VCFMerger:
             merged_filenames[alias] = merged_filename
         return full_pipeline, merged_filenames
 
-    def compress_and_index(self, alias_index, vcfs):
+    def compress_and_index(self, alias, vcfs):
         """
         Bgzip-compress and CSI-index VCFs.
 
-        :param vcfs:
-        :return:
+        :param alias: name of group of vcf files (used to name Nextflow processes uniquely)
+        :param vcfs: list of vcf files
+        :return: dependency map, list of final index processes, and list of final filenames
         """
         dependencies = {}
         index_processes = []
@@ -142,13 +144,13 @@ class VCFMerger:
             compress_process = None
             if not vcf.endswith('gz'):
                 compress_process = NextFlowProcess(
-                    process_name=f'compress_{alias_index}_{i}',
+                    process_name=f'compress_{alias}_{i}',
                     command_to_run=f'{self.bgzip_binary} -c {vcf} > {vcf}.gz'
                 )
                 vcf = f'{vcf}.gz'
             compressed_vcfs.append(vcf)
             index_process = NextFlowProcess(
-                process_name=f'index_{alias_index}_{i}',
+                process_name=f'index_{alias}_{i}',
                 command_to_run=f'{self.bcftools_binary} index -f -c {vcf}'
             )
             index_processes.append(index_process)
