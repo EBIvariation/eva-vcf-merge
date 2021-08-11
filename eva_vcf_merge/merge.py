@@ -40,6 +40,7 @@ class VCFMerger:
         """
         pipeline, merged_filenames = self.generate_horizontal_merge_pipeline(vcf_groups)
         workflow_file = os.path.join(self.working_dir, 'horizontal_merge.nf')
+        os.makedirs(self.working_dir, exist_ok=True)
         pipeline.run_pipeline(
             workflow_file_path=workflow_file,
             working_dir=self.working_dir,
@@ -60,6 +61,7 @@ class VCFMerger:
         """
         pipeline, merged_filenames = self.generate_vertical_merge_pipeline(vcf_groups, chunk_size)
         workflow_file = os.path.join(self.working_dir, "vertical_concat.nf")
+        os.makedirs(self.working_dir, exist_ok=True)
         pipeline.run_pipeline(
             workflow_file_path=workflow_file,
             working_dir=self.working_dir,

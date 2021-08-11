@@ -12,10 +12,7 @@ resources_dir = os.path.join(tests_dir, 'resources')
 
 @pytest.fixture
 def vcf_merger():
-    # create output directory
     output_dir = os.path.join(tests_dir, 'output')
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
     # use standard executables for testing
     yield VCFMerger(
         bgzip_binary='bgzip',
