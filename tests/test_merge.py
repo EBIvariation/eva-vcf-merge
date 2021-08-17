@@ -1,6 +1,7 @@
 import glob
 import os
 
+import pytest
 from ebi_eva_common_pyutils.command_utils import run_command_with_output
 
 
@@ -23,6 +24,12 @@ def test_horizontal_merge_multiple_groups(vcf_merger, unique_samples_vcfs, uniqu
         '2': os.path.join(vcf_merger.output_dir, '2_merged.vcf.gz')
     }
     assert_all_files_present(filenames.values())
+
+
+def test_horizontal_merge_alias_collision(vcf_merger, unique_samples_vcfs, unique_samples_vcfs_2):
+    vcfs = {'samples(+)': unique_samples_vcfs, 'samples(*)': unique_samples_vcfs_2}
+    with pytest.raises(ValueError):
+        vcf_merger.horizontal_merge(vcfs, resume=False)
 
 
 def test_vertical_merge(vcf_merger, same_samples_vcfs):

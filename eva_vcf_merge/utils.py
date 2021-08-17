@@ -36,6 +36,11 @@ def write_files_to_list(files, alias, output_dir):
     return list_filename
 
 
-def get_safe_str(s):
-    """Return string with non-digits/letters replaced by underscore."""
-    return re.sub('[^0-9a-zA-Z]+', '_', s)
+def get_valid_filename(s):
+    """Return string with characters not allowed in filenames replaced by underscore."""
+    return re.sub(r'[^-.0-9a-zA-Z]+', '_', s)
+
+
+def validate_aliases(aliases):
+    """Checks that each alias remains unique when converted to a valid filename."""
+    return len(set(get_valid_filename(s) for s in aliases)) == len(aliases)

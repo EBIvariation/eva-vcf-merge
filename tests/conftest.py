@@ -22,7 +22,7 @@ def vcf_merger():
         output_dir=output_dir
     )
     # clean up after merge tests
-    shutil.rmtree(output_dir)
+    shutil.rmtree(output_dir, ignore_errors=True)
     for ext in ('*.gz', '*.tbi', '*.csi'):
         for fn in glob.glob(os.path.join(resources_dir, ext)):
             os.remove(fn)

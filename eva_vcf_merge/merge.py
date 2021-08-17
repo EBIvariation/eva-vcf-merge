@@ -18,7 +18,7 @@ import shutil
 from ebi_eva_common_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
 
 from eva_vcf_merge.multistage import get_multistage_vertical_concat_pipeline
-from eva_vcf_merge.utils import write_files_to_list, get_safe_str
+from eva_vcf_merge.utils import write_files_to_list, get_valid_filename, validate_aliases
 
 
 class VCFMerger:
@@ -38,6 +38,8 @@ class VCFMerger:
         :param resume: whether to resume pipeline (default true)
         :returns: dict of merged filenames
         """
+        if not validate_aliases(vcf_groups.keys()):
+            raise ValueError('Aliases must be unique when converted to filenames')
         pipeline, merged_filenames = self.generate_horizontal_merge_pipeline(vcf_groups)
         workflow_file = os.path.join(self.working_dir, 'horizontal_merge.nf')
         os.makedirs(self.working_dir, exist_ok=True)
@@ -59,6 +61,8 @@ class VCFMerger:
         :param resume: whether to resume pipeline (default true)
         :returns: dict of merged filenames
         """
+        if not validate_aliases(vcf_groups.keys()):
+            raise ValueError('Aliases must be unique when converted to filenames')
         pipeline, merged_filenames = self.generate_vertical_merge_pipeline(vcf_groups, chunk_size)
         workflow_file = os.path.join(self.working_dir, "vertical_concat.nf")
         os.makedirs(self.working_dir, exist_ok=True)
@@ -71,7 +75,7 @@ class VCFMerger:
         )
         # move merged files to output directory and rename with alias
         for alias in merged_filenames:
-            safe_alias = get_safe_str(alias)
+            safe_alias = get_valid_filename(alias)
             target_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             shutil.move(merged_filenames[alias], target_filename)
             merged_filenames[alias] = target_filename
@@ -86,15 +90,15 @@ class VCFMerger:
         """
         dependencies = {}
         merged_filenames = {}
-        for alias, vcfs in vcf_groups.items():
-            safe_alias = get_safe_str(alias)
-            deps, index_processes, compressed_vcfs = self.compress_and_index(safe_alias, vcfs)
+        for alias_idx, (alias, vcfs) in enumerate(vcf_groups.items()):
+            deps, index_processes, compressed_vcfs = self.compress_and_index(alias_idx, vcfs)
             dependencies.update(deps)
 
+            safe_alias = get_valid_filename(alias)
             list_filename = write_files_to_list(compressed_vcfs, safe_alias, self.working_dir)
             merged_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             merge_process = NextFlowProcess(
-                process_name=f'merge_{safe_alias}',
+                process_name=f'merge_{alias_idx}',
                 command_to_run=f'{self.bcftools_binary} merge --merge all --file-list {list_filename} '
                                f'--threads 3 -O z -o {merged_filename}'
             )
@@ -114,9 +118,8 @@ class VCFMerger:
         """
         full_pipeline = NextFlowPipeline()
         merged_filenames = {}
-        for alias, vcfs in vcf_groups.items():
-            safe_alias = get_safe_str(alias)
-            deps, index_processes, compressed_vcfs = self.compress_and_index(safe_alias, vcfs)
+        for alias_idx, (alias, vcfs) in enumerate(vcf_groups.items()):
+            deps, index_processes, compressed_vcfs = self.compress_and_index(alias_idx, vcfs)
             compress_pipeline = NextFlowPipeline(deps)
             concat_pipeline, merged_filename = get_multistage_vertical_concat_pipeline(
                 vcf_files=compressed_vcfs,
