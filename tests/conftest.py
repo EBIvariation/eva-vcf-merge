@@ -12,10 +12,7 @@ resources_dir = os.path.join(tests_dir, 'resources')
 
 @pytest.fixture
 def vcf_merger():
-    # create output directory
     output_dir = os.path.join(tests_dir, 'output')
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
     # use standard executables for testing
     yield VCFMerger(
         bgzip_binary='bgzip',
@@ -25,7 +22,7 @@ def vcf_merger():
         output_dir=output_dir
     )
     # clean up after merge tests
-    shutil.rmtree(output_dir)
+    shutil.rmtree(output_dir, ignore_errors=True)
     for ext in ('*.gz', '*.tbi', '*.csi'):
         for fn in glob.glob(os.path.join(resources_dir, ext)):
             os.remove(fn)
@@ -60,4 +57,15 @@ def overlapping_samples_vcfs():
     return [
         os.path.join(resources_dir, 'chr1_samplesCD.vcf'),
         os.path.join(resources_dir, 'chr2_samplesCDE.vcf')
+    ]
+
+
+@pytest.fixture
+def many_vcfs_to_concat():
+    return [
+        os.path.join(resources_dir, 'concat', 's0.vcf.gz'),
+        os.path.join(resources_dir, 'concat', 's1.vcf.gz'),
+        os.path.join(resources_dir, 'concat', 's2.vcf.gz'),
+        os.path.join(resources_dir, 'concat', 's3.vcf.gz'),
+        os.path.join(resources_dir, 'concat', 's4.vcf.gz')
     ]
