@@ -39,6 +39,16 @@ def test_vertical_merge(vcf_merger, same_samples_vcfs):
     assert_all_files_present(filenames.values())
 
 
+def test_vertical_merge_multiple_groups(vcf_merger, same_samples_vcfs):
+    vcfs = {'1': same_samples_vcfs, '2': same_samples_vcfs}
+    filenames = vcf_merger.vertical_merge(vcfs, resume=False)
+    assert filenames == {
+        '1': os.path.join(vcf_merger.output_dir, '1_merged.vcf.gz'),
+        '2': os.path.join(vcf_merger.output_dir, '2_merged.vcf.gz')
+    }
+    assert_all_files_present(filenames.values())
+
+
 def test_concat_uninterrupted(vcf_merger, many_vcfs_to_concat):
     #   s0.vcf.gz   s1.vcf.gz   s2.vcf.gz   s3.vcf.gz   s4.vcf.gz
     #       \           /           \           /
