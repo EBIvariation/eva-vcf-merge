@@ -21,6 +21,7 @@ from eva_vcf_merge.utils import write_files_to_list
 
 
 def get_multistage_vertical_concat_pipeline(
+        alias,
         vcf_files,
         concat_processing_dir,
         concat_chunk_size,
@@ -61,16 +62,16 @@ def get_multistage_vertical_concat_pipeline(
         # split files in the current stage into chunks based on concat_chunk_size
         files_in_batch = vcf_files[(concat_chunk_size * batch):(concat_chunk_size * (batch + 1))]
         files_to_concat_list = write_files_to_concat_list(files_in_batch, stage, batch, concat_processing_dir)
-        output_vcf_file = get_output_vcf_file_name(stage, batch, concat_processing_dir)
+        output_vcf_file = get_output_vcf_file_name(alias, stage, batch, concat_processing_dir)
 
         # separate concat & index processes
         concat_process = NextFlowProcess(
-            process_name=f"concat_stage{stage}_batch{batch}",
+            process_name=f"concat{alias}_stage{stage}_batch{batch}",
             command_to_run=f"{bcftools_binary} concat --allow-overlaps --remove-duplicates "
                            f"--file-list {files_to_concat_list} -o {output_vcf_file} -O z"
         )
         index_process = NextFlowProcess(
-            process_name=f"index_stage{stage}_batch{batch}",
+            process_name=f"index{alias}_stage{stage}_batch{batch}",
             command_to_run=f"{bcftools_binary} index --csi {output_vcf_file}"
         )
         # index depends only on this batch's concat
@@ -89,7 +90,7 @@ def get_multistage_vertical_concat_pipeline(
     prev_stage_processes = curr_stage_processes
 
     return get_multistage_vertical_concat_pipeline(
-        output_vcf_files_from_stage,
+        alias, output_vcf_files_from_stage,
         concat_processing_dir, concat_chunk_size,
         bcftools_binary,
         stage=stage+1,
@@ -114,6 +115,6 @@ def get_concat_output_dir(concat_stage_index: int, concat_processing_dir: str):
     return os.path.join(concat_processing_dir, "vertical_concat", f"stage_{concat_stage_index}")
 
 
-def get_output_vcf_file_name(concat_stage_index: int, concat_batch_index: int, concat_processing_dir: str):
+def get_output_vcf_file_name(alias: str, concat_stage_index: int, concat_batch_index: int, concat_processing_dir: str):
     return os.path.join(get_concat_output_dir(concat_stage_index, concat_processing_dir),
-                        f"concat_output_stage{concat_stage_index}_batch{concat_batch_index}.vcf.gz")
+                        f"concat{alias}_output_stage{concat_stage_index}_batch{concat_batch_index}.vcf.gz")

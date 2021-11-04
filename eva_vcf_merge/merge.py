@@ -122,6 +122,7 @@ class VCFMerger:
             deps, index_processes, compressed_vcfs = self.compress_and_index(alias_idx, vcfs)
             compress_pipeline = NextFlowPipeline(deps)
             concat_pipeline, merged_filename = get_multistage_vertical_concat_pipeline(
+                alias=alias_idx,
                 vcf_files=compressed_vcfs,
                 concat_chunk_size=chunk_size,
                 concat_processing_dir=self.working_dir,
