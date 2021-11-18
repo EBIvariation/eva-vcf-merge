@@ -41,7 +41,7 @@ class VCFMerger:
         """
         Merge groups of vcfs horizontally or vertically.
 
-        :param merge_type:
+        :param merge_type: vertical or horizontal merge
         :param vcf_groups: dict mapping a string (e.g. an analysis alias) to a group of vcf files to be merged
         :param chunk_size: number of vcfs to merge at once (default 500)
         :param resume: whether to resume pipeline (default true)
@@ -70,9 +70,9 @@ class VCFMerger:
 
     def generate_merge_pipeline(self, merge_type, vcf_groups, chunk_size):
         """
-        Generate merge pipeline.
+        Generate merge pipeline, including compressing and indexing VCFs.
 
-        :param merge_type:
+        :param merge_type: vertical or horizontal merge
         :param vcf_groups: dict mapping a string to a group of vcf files to be merged
         :param chunk_size: number of vcfs to merge at once
         :return: complete NextFlowPipeline and dict of merged filenames
@@ -106,19 +106,13 @@ class VCFMerger:
             merged_filenames[alias] = merged_filename
         return full_pipeline, merged_filenames
 
-    def merge_command(self, files_to_merge_list, output_vcf_file):
-        return f'{self.bcftools_binary} merge --merge all --file-list {files_to_merge_list} --threads 3 -O z -o {output_vcf_file}'
-
-    def concat_command(self, files_to_merge_list, output_vcf_file):
-        return f'{self.bcftools_binary} concat --allow-overlaps --remove-duplicates --file-list {files_to_merge_list} -O z -o {output_vcf_file}'
-
     def compress_and_index(self, alias, vcfs):
         """
         Bgzip-compress and CSI-index VCFs.
 
         :param alias: name of group of vcf files (used to name Nextflow processes uniquely)
         :param vcfs: list of vcf files
-        :return: Nextflow pipeline and list of final filenames
+        :return: NextFlow pipeline and list of final filenames
         """
         dependencies = {}
         index_processes = []
@@ -140,3 +134,11 @@ class VCFMerger:
             # each file's index depends only on compress (if present)
             dependencies[index_process] = [compress_process] if compress_process else []
         return NextFlowPipeline(dependencies), compressed_vcfs
+
+    def merge_command(self, files_to_merge_list, output_vcf_file):
+        return (f'{self.bcftools_binary} merge --merge all --file-list {files_to_merge_list} --threads 3 '
+                f'-O z -o {output_vcf_file}')
+
+    def concat_command(self, files_to_merge_list, output_vcf_file):
+        return (f'{self.bcftools_binary} concat --allow-overlaps --remove-duplicates --file-list {files_to_merge_list} '
+                f'-O z -o {output_vcf_file}')
