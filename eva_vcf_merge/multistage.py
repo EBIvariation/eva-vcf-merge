@@ -63,7 +63,7 @@ def get_multistage_merge_pipeline(
     for batch in range(0, num_batches_in_stage):
         # split files in the current stage into chunks based on chunk_size
         files_in_batch = vcf_files[(chunk_size * batch):(chunk_size * (batch + 1))]
-        files_to_merge_list = write_files_to_merge_list(process_name, files_in_batch, stage, batch, processing_dir)
+        files_to_merge_list = write_files_to_merge_list(process_name, alias, files_in_batch, stage, batch, processing_dir)
         output_vcf_file = get_output_vcf_file_name(process_name, alias, stage, batch, processing_dir)
 
         # separate merge & index processes
@@ -102,13 +102,12 @@ def get_multistage_merge_pipeline(
     )
 
 
-def write_files_to_merge_list(process_name, files_to_merge, stage, batch, processing_dir):
+def write_files_to_merge_list(process_name, alias, files_to_merge, stage, batch, processing_dir):
     """
     Write the list of files to be merged for a given stage and batch
     """
-    output_dir = get_output_dir(process_name, stage, processing_dir)
-    alias = f'batch{batch}'
-    list_filename = os.path.join(output_dir, f"{alias}_files.list")
+    output_dir = get_output_dir(process_name, alias, stage, processing_dir)
+    list_filename = os.path.join(output_dir, f"batch{batch}_files.list")
     os.makedirs(os.path.dirname(list_filename), exist_ok=True)
     with open(list_filename, "w") as handle:
         for filename in files_to_merge:
@@ -116,13 +115,13 @@ def write_files_to_merge_list(process_name, files_to_merge, stage, batch, proces
     return list_filename
 
 
-def get_output_dir(process_name: str, stage_index: int, processing_dir: str):
+def get_output_dir(process_name, alias, stage_index, processing_dir):
     """
     Get the file name with the list of files to be merged for a given stage and batch in the merge process
     """
-    return os.path.join(processing_dir, process_name, f"stage_{stage_index}")
+    return os.path.join(processing_dir, f'{process_name}_{alias}', f"stage_{stage_index}")
 
 
-def get_output_vcf_file_name(process_name: str, alias: str, stage_index: int, batch_index: int, processing_dir: str):
-    return os.path.join(get_output_dir(process_name, stage_index, processing_dir),
+def get_output_vcf_file_name(process_name, alias, stage_index, batch_index, processing_dir):
+    return os.path.join(get_output_dir(process_name, alias, stage_index, processing_dir),
                         f"{process_name}{alias}_output_stage{stage_index}_batch{batch_index}.vcf.gz")
