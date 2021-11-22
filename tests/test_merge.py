@@ -63,7 +63,7 @@ def test_concat_uninterrupted(vcf_merger, many_vcfs_to_concat):
     #                                 Final_merged                      <-------- Stage 2
     vcfs = {'many': many_vcfs_to_concat}
     vcf_merger.vertical_merge(vcfs, chunk_size=2, resume=False)
-    stage_dirs = glob.glob(f'{vcf_merger.working_dir}/vertical_concat/stage*')
+    stage_dirs = glob.glob(f'{vcf_merger.working_dir}/concat_0/stage*')
     assert len(stage_dirs) == 3
     output_vcf_from_multi_stage_concat = os.path.join(vcf_merger.output_dir, 'many_merged.vcf.gz')
     output_vcf_from_single_stage_concat = f'{vcf_merger.output_dir}/single_stage_concat_result.vcf.gz'

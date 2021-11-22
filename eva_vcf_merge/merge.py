@@ -17,8 +17,9 @@ import shutil
 
 from ebi_eva_common_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
 
-from eva_vcf_merge.multistage import get_multistage_vertical_concat_pipeline
-from eva_vcf_merge.utils import write_files_to_list, get_valid_filename, validate_aliases
+from eva_vcf_merge.detect import MergeType
+from eva_vcf_merge.multistage import get_multistage_merge_pipeline
+from eva_vcf_merge.utils import get_valid_filename, validate_aliases
 
 
 class VCFMerger:
@@ -30,32 +31,17 @@ class VCFMerger:
         self.output_dir = output_dir
         self.working_dir = os.path.join(output_dir, 'nextflow')
 
-    def horizontal_merge(self, vcf_groups, resume=True):
-        """
-        Merge groups of vcfs horizontally, i.e. by sample, using bcftools.
-
-        :param vcf_groups: dict mapping a string (e.g. an analysis alias) to a group of vcf files to be merged
-        :param resume: whether to resume pipeline (default true)
-        :returns: dict of merged filenames
-        """
-        if not validate_aliases(vcf_groups.keys()):
-            raise ValueError('Aliases must be unique when converted to filenames')
-        pipeline, merged_filenames = self.generate_horizontal_merge_pipeline(vcf_groups)
-        workflow_file = os.path.join(self.working_dir, 'horizontal_merge.nf')
-        os.makedirs(self.working_dir, exist_ok=True)
-        pipeline.run_pipeline(
-            workflow_file_path=workflow_file,
-            working_dir=self.working_dir,
-            nextflow_binary_path=self.nextflow_binary,
-            nextflow_config_path=self.nextflow_config,
-            resume=resume
-        )
-        return merged_filenames
+    def horizontal_merge(self, vcf_groups, chunk_size=500, resume=True):
+        return self.common_merge(MergeType.HORIZONTAL, vcf_groups, chunk_size, resume)
 
     def vertical_merge(self, vcf_groups, chunk_size=500, resume=True):
-        """
-        Merge groups of vcfs vertically, i.e. concatenation.
+        return self.common_merge(MergeType.VERTICAL, vcf_groups, chunk_size, resume)
 
+    def common_merge(self, merge_type, vcf_groups, chunk_size=500, resume=True):
+        """
+        Merge groups of vcfs horizontally or vertically.
+
+        :param merge_type: vertical or horizontal merge
         :param vcf_groups: dict mapping a string (e.g. an analysis alias) to a group of vcf files to be merged
         :param chunk_size: number of vcfs to merge at once (default 500)
         :param resume: whether to resume pipeline (default true)
@@ -63,8 +49,9 @@ class VCFMerger:
         """
         if not validate_aliases(vcf_groups.keys()):
             raise ValueError('Aliases must be unique when converted to filenames')
-        pipeline, merged_filenames = self.generate_vertical_merge_pipeline(vcf_groups, chunk_size)
-        workflow_file = os.path.join(self.working_dir, "vertical_concat.nf")
+        pipeline, merged_filenames = self.generate_merge_pipeline(merge_type, vcf_groups, chunk_size)
+        workflow_file = os.path.join(self.working_dir, "merge.nf")
+
         os.makedirs(self.working_dir, exist_ok=True)
         pipeline.run_pipeline(
             workflow_file_path=workflow_file,
@@ -81,37 +68,11 @@ class VCFMerger:
             merged_filenames[alias] = target_filename
         return merged_filenames
 
-    def generate_horizontal_merge_pipeline(self, vcf_groups):
+    def generate_merge_pipeline(self, merge_type, vcf_groups, chunk_size):
         """
-        Generate horizontal merge pipeline, including compressing and indexing VCFs.
+        Generate merge pipeline, including compressing and indexing VCFs.
 
-        :param vcf_groups: dict mapping a string to a group of vcf files to be merged
-        :return: complete NextflowPipeline and dict of merged filenames
-        """
-        dependencies = {}
-        merged_filenames = {}
-        for alias_idx, (alias, vcfs) in enumerate(vcf_groups.items()):
-            deps, index_processes, compressed_vcfs = self.compress_and_index(alias_idx, vcfs)
-            dependencies.update(deps)
-
-            safe_alias = get_valid_filename(alias)
-            list_filename = write_files_to_list(compressed_vcfs, safe_alias, self.working_dir)
-            merged_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
-            merge_process = NextFlowProcess(
-                process_name=f'merge_{alias_idx}',
-                command_to_run=f'{self.bcftools_binary} merge --merge all --file-list {list_filename} '
-                               f'--threads 3 -O z -o {merged_filename}'
-            )
-            # each alias's merge process depends on all index processes
-            dependencies[merge_process] = index_processes
-            merged_filenames[alias] = merged_filename
-
-        return NextFlowPipeline(dependencies), merged_filenames
-
-    def generate_vertical_merge_pipeline(self, vcf_groups, chunk_size):
-        """
-        Generate vertical merge (concatenation) pipeline.
-
+        :param merge_type: vertical or horizontal merge
         :param vcf_groups: dict mapping a string to a group of vcf files to be merged
         :param chunk_size: number of vcfs to merge at once
         :return: complete NextFlowPipeline and dict of merged filenames
@@ -119,16 +80,28 @@ class VCFMerger:
         full_pipeline = NextFlowPipeline()
         merged_filenames = {}
         for alias_idx, (alias, vcfs) in enumerate(vcf_groups.items()):
-            deps, index_processes, compressed_vcfs = self.compress_and_index(alias_idx, vcfs)
-            compress_pipeline = NextFlowPipeline(deps)
-            concat_pipeline, merged_filename = get_multistage_vertical_concat_pipeline(
-                alias=alias_idx,
-                vcf_files=compressed_vcfs,
-                concat_chunk_size=chunk_size,
-                concat_processing_dir=self.working_dir,
-                bcftools_binary=self.bcftools_binary
-            )
-            pipeline = NextFlowPipeline.join_pipelines(compress_pipeline, concat_pipeline)
+            compress_pipeline, compressed_vcfs = self.compress_and_index(alias_idx, vcfs)
+            if merge_type == MergeType.HORIZONTAL:
+                merge_pipeline, merged_filename = get_multistage_merge_pipeline(
+                    alias=alias_idx,
+                    vcf_files=compressed_vcfs,
+                    chunk_size=chunk_size,
+                    processing_dir=self.working_dir,
+                    bcftools_binary=self.bcftools_binary,
+                    process_name='merge',
+                    process_command=self.merge_command
+                )
+            else:
+                merge_pipeline, merged_filename = get_multistage_merge_pipeline(
+                    alias=alias_idx,
+                    vcf_files=compressed_vcfs,
+                    chunk_size=chunk_size,
+                    processing_dir=self.working_dir,
+                    bcftools_binary=self.bcftools_binary,
+                    process_name='concat',
+                    process_command=self.concat_command
+                )
+            pipeline = NextFlowPipeline.join_pipelines(compress_pipeline, merge_pipeline)
             full_pipeline = NextFlowPipeline.join_pipelines(full_pipeline, pipeline)
             merged_filenames[alias] = merged_filename
         return full_pipeline, merged_filenames
@@ -139,7 +112,7 @@ class VCFMerger:
 
         :param alias: name of group of vcf files (used to name Nextflow processes uniquely)
         :param vcfs: list of vcf files
-        :return: dependency map, list of final index processes, and list of final filenames
+        :return: NextFlow pipeline and list of final filenames
         """
         dependencies = {}
         index_processes = []
@@ -160,5 +133,12 @@ class VCFMerger:
             index_processes.append(index_process)
             # each file's index depends only on compress (if present)
             dependencies[index_process] = [compress_process] if compress_process else []
-        # TODO preferably return a NextFlowPipeline rather than dependencies & final processes
-        return dependencies, index_processes, compressed_vcfs
+        return NextFlowPipeline(dependencies), compressed_vcfs
+
+    def merge_command(self, files_to_merge_list, output_vcf_file):
+        return (f'{self.bcftools_binary} merge --merge all --file-list {files_to_merge_list} --threads 3 '
+                f'-O z -o {output_vcf_file}')
+
+    def concat_command(self, files_to_merge_list, output_vcf_file):
+        return (f'{self.bcftools_binary} concat --allow-overlaps --remove-duplicates --file-list {files_to_merge_list} '
+                f'-O z -o {output_vcf_file}')
