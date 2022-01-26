@@ -55,6 +55,12 @@ def get_multistage_merge_pipeline(
         prev_stage_processes = []
     # If we are left with only one file, this means we have reached the last merge stage
     if len(vcf_files) == 1:
+        # Add last indexing using tbi
+        index_process = NextFlowProcess(
+            process_name=f"final_index_tbi_{alias}",
+            command_to_run=f"{bcftools_binary} index --tbi {vcf_files[0]}"
+        )
+        pipeline.add_dependencies({index_process: prev_stage_processes[-1:]})
         return pipeline, vcf_files[0]
 
     num_batches_in_stage = math.ceil(len(vcf_files) / chunk_size)

@@ -65,6 +65,8 @@ class VCFMerger:
             safe_alias = get_valid_filename(alias)
             target_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             shutil.move(merged_filenames[alias], target_filename)
+            shutil.move(merged_filenames[alias] + '.csi', target_filename + '.csi')
+            shutil.move(merged_filenames[alias] + '.tbi', target_filename + '.tbi')
             merged_filenames[alias] = target_filename
         return merged_filenames
 
