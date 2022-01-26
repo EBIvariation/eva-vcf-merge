@@ -65,6 +65,8 @@ class VCFMerger:
             safe_alias = get_valid_filename(alias)
             target_filename = os.path.join(self.output_dir, f'{safe_alias}_merged.vcf.gz')
             shutil.move(merged_filenames[alias], target_filename)
+            shutil.move(merged_filenames[alias] + '.csi', target_filename + '.csi')
+            shutil.move(merged_filenames[alias] + '.tbi', target_filename + '.tbi')
             merged_filenames[alias] = target_filename
         return merged_filenames
 
@@ -108,7 +110,7 @@ class VCFMerger:
 
     def compress_and_index(self, alias, vcfs):
         """
-        Bgzip-compress and CSI-index VCFs.
+        Bgzip-compress and CSI/TBI-index VCFs.
 
         :param alias: name of group of vcf files (used to name Nextflow processes uniquely)
         :param vcfs: list of vcf files
@@ -126,13 +128,19 @@ class VCFMerger:
                 )
                 vcf = f'{vcf}.gz'
             compressed_vcfs.append(vcf)
-            index_process = NextFlowProcess(
+            index_process_csi = NextFlowProcess(
                 process_name=f'index_{alias}_{i}',
                 command_to_run=f'{self.bcftools_binary} index -f -c {vcf}'
             )
-            index_processes.append(index_process)
+            index_process_tbi = NextFlowProcess(
+                process_name=f'index_{alias}_{i}',
+                command_to_run=f'{self.bcftools_binary} index -f -t {vcf}'
+            )
+            index_processes.append(index_process_csi)
+            index_processes.append(index_process_tbi)
             # each file's index depends only on compress (if present)
-            dependencies[index_process] = [compress_process] if compress_process else []
+            dependencies[index_process_csi] = [compress_process] if compress_process else []
+            dependencies[index_process_tbi] = [compress_process] if compress_process else []
         return NextFlowPipeline(dependencies), compressed_vcfs
 
     def merge_command(self, files_to_merge_list, output_vcf_file):
