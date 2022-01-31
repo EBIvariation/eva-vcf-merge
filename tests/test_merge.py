@@ -9,11 +9,18 @@ def assert_all_files_present(filenames):
     assert all(os.path.exists(f) for f in filenames)
 
 
+def add_index(filenames):
+    for f in filenames:
+        yield f
+        yield f + '.tbi'
+        yield f + '.csi'
+
+
 def test_horizontal_merge(vcf_merger, unique_samples_vcfs):
     vcfs = {'we!rd alias': unique_samples_vcfs}
     filenames = vcf_merger.horizontal_merge(vcfs, resume=False)
     assert filenames == {'we!rd alias': os.path.join(vcf_merger.output_dir, 'we_rd_alias_merged.vcf.gz')}
-    assert_all_files_present(filenames.values())
+    assert_all_files_present(add_index(filenames.values()))
 
 
 def test_horizontal_merge_multiple_groups(vcf_merger, unique_samples_vcfs, unique_samples_vcfs_2):
@@ -23,7 +30,7 @@ def test_horizontal_merge_multiple_groups(vcf_merger, unique_samples_vcfs, uniqu
         '1': os.path.join(vcf_merger.output_dir, '1_merged.vcf.gz'),
         '2': os.path.join(vcf_merger.output_dir, '2_merged.vcf.gz')
     }
-    assert_all_files_present(filenames.values())
+    assert_all_files_present(add_index(filenames.values()))
 
 
 def test_horizontal_merge_alias_collision(vcf_merger, unique_samples_vcfs, unique_samples_vcfs_2):
@@ -36,7 +43,7 @@ def test_vertical_merge(vcf_merger, same_samples_vcfs):
     vcfs = {'alias': same_samples_vcfs}
     filenames = vcf_merger.vertical_merge(vcfs, resume=False)
     assert filenames == {'alias': os.path.join(vcf_merger.output_dir, 'alias_merged.vcf.gz')}
-    assert_all_files_present(filenames.values())
+    assert_all_files_present(add_index(filenames.values()))
 
 
 def test_vertical_merge_multiple_groups(vcf_merger, same_samples_vcfs):
@@ -46,7 +53,7 @@ def test_vertical_merge_multiple_groups(vcf_merger, same_samples_vcfs):
         '1': os.path.join(vcf_merger.output_dir, '1_merged.vcf.gz'),
         '2': os.path.join(vcf_merger.output_dir, '2_merged.vcf.gz')
     }
-    assert_all_files_present(filenames.values())
+    assert_all_files_present(add_index(filenames.values()))
 
 
 def test_concat_uninterrupted(vcf_merger, many_vcfs_to_concat):
