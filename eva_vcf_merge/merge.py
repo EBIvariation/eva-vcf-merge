@@ -104,7 +104,7 @@ class VCFMerger:
                     process_command=self.concat_command
                 )
             pipeline = NextFlowPipeline.join_pipelines(compress_pipeline, merge_pipeline)
-            full_pipeline = NextFlowPipeline.join_pipelines(full_pipeline, pipeline)
+            full_pipeline = NextFlowPipeline.join_pipelines(full_pipeline, pipeline, with_dependencies=False)
             merged_filenames[alias] = merged_filename
         return full_pipeline, merged_filenames
 
