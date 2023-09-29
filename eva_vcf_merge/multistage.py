@@ -15,7 +15,7 @@
 import math
 import os
 
-from ebi_eva_common_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
+from ebi_eva_internal_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
 
 
 def get_multistage_merge_pipeline(

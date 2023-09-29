@@ -15,7 +15,7 @@
 import os
 import shutil
 
-from ebi_eva_common_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
+from ebi_eva_internal_pyutils.nextflow import NextFlowPipeline, NextFlowProcess
 
 from eva_vcf_merge.detect import MergeType
 from eva_vcf_merge.multistage import get_multistage_merge_pipeline
