@@ -1,3 +1,3 @@
-ebi-eva-common-pyutils[eva-internal]==0.6.0
+ebi-eva-common-pyutils[eva-internal]==0.6.2
 pysam~=0.16
 pytest~=6.2
